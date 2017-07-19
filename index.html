@@ -18,7 +18,6 @@
     </style>
 
     <script type="text/javascript">
-
       var Board = (function() {
         var ctx, canvas;
 
@@ -35,7 +34,6 @@
           ctx.fillStyle = config.boardColor || "lightgrey";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-          console.log(this)
         }
 
         Board.prototype.drawTile = function(tile) {
@@ -114,7 +112,6 @@
           this.width = width;
           this.height = height;
           this.tiles = TileGrid.generateTileGrid(width, height);
-          console.log(this)
         }
 
         TileGrid.generateTileGrid = function(width, height) {
@@ -123,7 +120,6 @@
           for(var i = 0; i < height; i++) {
             array.push([]);
           }
-
 
           for(var y = 0; y < array.length; y++) {
             for(var x = 0; x < width; x++) {
@@ -182,8 +178,50 @@
           return columnArr;
         }
 
-        TileGrid.prototype.resetGridIndices = function() {
+        TileGrid.prototype.sortTiles = function(fn) {
+          for(var y = 0; y < this.tiles.length; y++) {
+            this.tiles[y] = this.tiles[y].sort(fn);
+          }
+        }
 
+        TileGrid.prototype.reverseSortTiles = function(fn) {
+          for(var y = 0; y < this.tiles.length; y++) {
+            this.tiles[y] = this.tiles[y].slice(0).reverse().sort(fn);
+          }
+        }
+
+        TileGrid.prototype.mapTiles = function(fn) {
+          for(var y = 0; y < this.tiles.length; y++) {
+            this.tiles[y] = this.tiles[y].map(fn);
+          }
+        }
+
+        TileGrid.prototype.reverseMapTiles = function(fn) {
+          for(var y = 0; y < this.tiles.length; y++) {
+            this.tiles[y] = this.tiles[y].map(fn).reverse();
+          }
+        }
+
+        TileGrid.prototype.resetGridIndices = function() {
+          var resetArray = [];
+
+
+          for(var y = 0; y < this.tiles.length; y++) {
+            resetArray.push([]);
+            
+            for(var x = 0; x < this.tiles[y].length; x++) {
+              var resetTile = this.tiles[y][x];
+
+              resetTile.setY(y);
+              resetTile.setX(x);
+
+              resetArray[y].push(resetTile);
+            }
+          }
+
+          // console.log(this.tiles)
+          // console.log("Reset Array");
+          // console.log(resetArray);
         }
 
         return TileGrid;
@@ -203,8 +241,13 @@
           this.board = new Board(gameConfig);
           this.tileGrid = new TileGrid(gameConfig.grid.x, gameConfig.grid.y);
           this.gameOver = false;
+
+
         }
 
+        function sortEmptyTiles(tile) {
+          return tile.isEmpty();
+        }
 
         Game.prototype.start = function() {
           this.tileGrid.addRandomTiles(2, 30);
@@ -223,36 +266,67 @@
         }
 
 
+        Game.prototype.shiftTilesLeft = function() {
+          this.tileGrid.sortTiles(sortEmptyTiles);
+
+          this.tileGrid.mapTiles(function(tile, i, arr) {
+            if(i < arr.length-1) {
+              if(!tile.isEmpty() && tile.isEqualTo(arr[i+1])) {
+                tile.doubleValue();
+                arr[i+1].setToZero();
+
+                arr.sort(sortEmptyTiles);
+
+                return tile;
+              } else {
+                return tile;
+              }
+            } else {
+              return tile;
+            }
+          });
+        }
+
+        Game.prototype.shiftTilesRight = function() {
+          this.tileGrid.reverseSortTiles(sortEmptyTiles);
+
+          this.tileGrid.reverseMapTiles(function(tile, i, arr) {
+            if(i < arr.length-1) {
+              if(!tile.isEmpty() && tile.isEqualTo(arr[i+1])) {
+                tile.doubleValue();
+                arr[i+1].setToZero();
+
+                arr.sort(sortEmptyTiles);
+
+                return tile;
+              } else {
+                return tile;
+              }
+            } else {
+              return tile;
+            }
+          });
+        }
+
         Game.prototype.moveLeft = function () {
-          console.log("left")
-          var tile1 = new Tile(0,2);
-          var tile2 = new Tile(0,3);
-          tile1.setValue(2);
-          tile2.setValue(2);
+          this.shiftTilesLeft();
 
-          var testArr = [new Tile(0,0), new Tile(0,1), tile1, tile2];
+          this.tileGrid.resetGridIndices();
 
-          this.shiftTilesLeft(testArr)
+          this.tileGrid.addRandomTiles(1, 30);
 
+          this.drawGameBoard();
         };
-
-        Game.prototype.shiftTilesLeft = function(arr) {
-          var array = arr.slice(0, arr.length)
-          var doubledArr = this.doubleTiles("left", array)
-          console.log('doubledArr')
-          console.log(doubledArr)
-
-        }
-
-        Game.prototype.shiftTilesRight = function(arr) {
-          var doubledArr = this.doubleTiles("right", arr, arr.length-1)
-          console.log('doubledArr')
-          console.log(doubledArr)
-        }
 
 
         Game.prototype.moveRight = function() {
-          console.log("right")
+          this.shiftTilesRight();          
+
+          this.tileGrid.resetGridIndices();
+
+          this.tileGrid.addRandomTiles(1, 30);
+
+          this.drawGameBoard();
         };
 
         Game.prototype.moveUp = function() {
